@@ -30,6 +30,7 @@ func NewOpenAIClient(apiKey string, baseURL string, model string) *OpenAIClient 
 	}
 }
 
+// GenerateTutorial генерирует персонализированный туториал
 func (c *OpenAIClient) GenerateTutorial(ctx context.Context, profile domain.Profile, codeContext string, userRequest string) (string, error) {
 	prompt := fmt.Sprintf(`
 You are an expert programming tutor. Create a personalized tutorial based on the user's profile and code context.
@@ -78,4 +79,10 @@ GUIDELINES:
 	}
 
 	return resp.Choices[0].Message.Content, nil
+}
+
+// ExtractTopicFromContent пытается извлечь тему из контента
+func ExtractTopicFromContent(content string) string {
+	// Простая реализация - можно расширить
+	return "General Programming"
 }

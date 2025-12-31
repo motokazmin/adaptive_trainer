@@ -11,14 +11,18 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/roman/trainer/backend/ai"
 	"github.com/roman/trainer/backend/domain"
+	"github.com/roman/trainer/backend/progress"
+	"github.com/roman/trainer/backend/quiz"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 type App struct {
-	DB        *gorm.DB
-	AIService ai.AIService
-	Router    *chi.Mux
+	DB             *gorm.DB
+	AIService      ai.AIService
+	ProgressEngine *progress.Engine
+	QuizService    *quiz.Service
+	Router         *chi.Mux
 }
 
 func main() {
@@ -29,20 +33,24 @@ func main() {
 		log.Fatal("failed to connect database")
 	}
 
-	// Auto migrate
-	db.AutoMigrate(&domain.Profile{}, &domain.Tutorial{}, &domain.Progress{})
+	// Auto migrate - добавляем новые модели
+	db.AutoMigrate(
+		&domain.Profile{},
+		&domain.Tutorial{},
+		&domain.Progress{},
+		&domain.Quiz{},
+		&domain.QuizSubmission{},
+	)
 
 	// Initialize AI Service
-	apiKey := os.Getenv("AI_API_KEY") // Changed from GEMINI_API_KEY
+	apiKey := os.Getenv("AI_API_KEY")
 	if apiKey == "" {
-		// Fallback for backward compatibility or dev environment
-		apiKey = os.Getenv("GEMINI_API_KEY")
+		apiKey = os.Getenv("GEMINI_API_KEY") // Fallback
 	}
 
 	baseURL := os.Getenv("AI_BASE_URL")
 	model := os.Getenv("AI_MODEL")
 
-	// Default to generic OpenAI client which works for DeepSeek/Qwen too
 	log.Printf("Initializing AI Client...")
 	log.Printf("Base URL: '%s'", baseURL)
 	log.Printf("Model: '%s'", model)
@@ -54,15 +62,26 @@ func main() {
 
 	aiClient := ai.NewOpenAIClient(apiKey, baseURL, model)
 
+	// Initialize Progress Engine
+	progressEngine := progress.NewEngine(db)
+	log.Printf("Progress Engine initialized")
+
+	// Initialize Quiz Service
+	quizService := quiz.NewService(db, aiClient)
+	log.Printf("Quiz Service initialized")
+
 	app := &App{
-		DB:        db,
-		AIService: aiClient,
-		Router:    chi.NewRouter(),
+		DB:             db,
+		AIService:      aiClient,
+		ProgressEngine: progressEngine,
+		QuizService:    quizService,
+		Router:         chi.NewRouter(),
 	}
 
 	// Setup Middleware
 	app.Router.Use(middleware.Logger)
 	app.Router.Use(middleware.Recoverer)
+	app.Router.Use(middleware.RequestID)
 	app.Router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -78,6 +97,14 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("Server starting on port %s", port)
+	log.Printf("✓ All systems initialized")
+	log.Printf("✓ Server starting on port %s", port)
+	log.Printf("✓ Available endpoints:")
+	log.Printf("  - Profile: /api/profile")
+	log.Printf("  - Tutorials: /api/tutorials")
+	log.Printf("  - Quizzes: /api/quizzes")
+	log.Printf("  - Progress: /api/progress")
+	log.Printf("  - Project Analysis: /api/project/analyze")
+
 	log.Fatal(http.ListenAndServe(":"+port, app.Router))
 }
