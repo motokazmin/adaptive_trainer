@@ -166,7 +166,13 @@ func (a *App) generateTutorial(w http.ResponseWriter, r *http.Request) {
 	// Извлекаем заголовок из контента
 	title := ai.ExtractTopicFromContent(content)
 	if title == "" || title == "General Programming" {
-		title = "Generated Tutorial: " + topic
+		// Используем topic который ввел пользователь
+		title = topic
+	}
+
+	// Если всё ещё пустой, используем дефолт с топиком
+	if title == "" {
+		title = "Tutorial: " + topic
 	}
 
 	tutorial := domain.Tutorial{

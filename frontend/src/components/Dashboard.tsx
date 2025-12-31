@@ -8,7 +8,8 @@ import {
     BarChart3,
     Flame,
     Brain,
-    Zap
+    Zap,
+    RefreshCw
 } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
@@ -21,6 +22,16 @@ export const Dashboard: React.FC = () => {
 
     useEffect(() => {
         loadDashboard();
+
+        // Auto-refresh при переключении на вкладку
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                loadDashboard();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
 
     const loadDashboard = async () => {
@@ -95,6 +106,18 @@ export const Dashboard: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Stats Cards */}
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">Your Progress</h2>
+                <button
+                    onClick={loadDashboard}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-all disabled:opacity-50"
+                >
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    Refresh
+                </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="glass p-6 rounded-2xl">
                     <div className="flex items-center gap-3 mb-2">
